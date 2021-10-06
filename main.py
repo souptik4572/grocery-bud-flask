@@ -32,6 +32,8 @@ class UserModel(database.Model):
 
 # database.create_all()
 
+item_get_delete_args = reqparse.RequestParser()
+item_get_delete_args.add_argument("token", type=str, help = "jwt is missing", required = True)
 
 item_put_args = reqparse.RequestParser()
 item_put_args.add_argument(
