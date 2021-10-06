@@ -1,8 +1,10 @@
 from flask import Flask
 from flask_restful import Api, Resource, reqparse, abort, fields, marshal_with
 from flask_sqlalchemy import SQLAlchemy
+import jwt
 from sqlalchemy.orm import backref
 import bcrypt
+import jwt
 
 app = Flask(__name__)
 api = Api(app)
@@ -127,7 +129,9 @@ class ParticularUser(Resource):
             is_password_matching = bcrypt.checkpw(
                 args['password'].encode('utf-8'), result.password)
             if is_password_matching:
-                return "Logged in successfully", 200
+                encoded_token = jwt.encode(
+                    {"email": result.email}, "secret", algorithm='HS256')
+                return {'token': encoded_token}
             abort(404, error="Passwords does not match")
         else:
             abort(404, error="Route does not exist")

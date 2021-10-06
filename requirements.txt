@@ -5,6 +5,7 @@ certifi==2021.5.30
 cffi==1.14.6
 charset-normalizer==2.0.6
 click==7.1.2
+cryptography==35.0.0
 Flask==1.1.2
 Flask-RESTful==0.3.8
 Flask-SQLAlchemy==2.4.3
@@ -14,6 +15,7 @@ Jinja2==2.11.2
 MarkupSafe==1.1.1
 pycodestyle==2.7.0
 pycparser==2.20
+PyJWT==2.1.0
 pytz==2020.1
 requests==2.26.0
 six==1.15.0
