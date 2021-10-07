@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 import jwt
 import bcrypt
 import jwt
+from uuid import uuid1
 
 app = Flask(__name__)
 api = Api(app)
@@ -12,7 +13,7 @@ database = SQLAlchemy(app)
 
 
 class ItemModel(database.Model):
-    id = database.Column(database.Integer, primary_key=True)
+    id = database.Column(database.String, primary_key=True)
     name = database.Column(database.String(50), nullable=False)
     owner_email = database.Column(database.String, database.ForeignKey(
         'user_model.email'), nullable=False)
@@ -32,17 +33,21 @@ class UserModel(database.Model):
 
 # database.create_all()
 
+
 item_get_delete_args = reqparse.RequestParser()
-item_get_delete_args.add_argument("token", type=str, help = "jwt is missing", required = True)
+item_get_delete_args.add_argument(
+    "token", type=str, help="jwt is missing", required=True)
 
 item_put_args = reqparse.RequestParser()
 item_put_args.add_argument(
     "name", type=str, help="name of the item is missing", required=True)
 item_put_args.add_argument(
-    "owner_email", type=str, help="item owner info is missing", required=True)
+    "token", type=str, help="jwt is missing", required=True)
 
 item_patch_args = reqparse.RequestParser()
-item_patch_args.add_argument("name", type=str)
+item_patch_args.add_argument("name", type=str, required=True)
+item_patch_args.add_argument(
+    "token", type=str, help="jwt is missing", required=True)
 
 user_register_args = reqparse.RequestParser()
 user_register_args.add_argument(
@@ -60,7 +65,8 @@ user_login_args.add_argument(
 
 item_resource_fields = {
     "id": fields.String,
-    "name": fields.String
+    "name": fields.String,
+    "owner_email": fields.String
 }
 
 user_resource_fields = {
@@ -70,41 +76,55 @@ user_resource_fields = {
 }
 
 
+def get_logged_in_user(token):
+    try:
+        user = jwt.decode(token, 'secret', algorithms=['HS256'])
+        if not user['email']:
+            abort(404, error="Token is invalid")
+        return user['email']
+    except:
+        abort(404, error="Token is invalid")
+
+
 class AllItems(Resource):
     @marshal_with(item_resource_fields)
     def get(self):
-        result = ItemModel.query.all()
+        args = item_get_delete_args.parse_args()
+        logged_in_email = get_logged_in_user(args['token'].encode('utf-8'))
+        result = ItemModel.query.filter_by(
+            owner_email=logged_in_email).all()
         if not result:
             abort(404, error="Items does not exist")
         return result
+
+    @marshal_with(item_resource_fields)
+    def put(self):
+        args = item_put_args.parse_args()
+        logged_in_email = get_logged_in_user(args['token'].encode('utf-8'))
+        new_item = ItemModel(
+            id=str(uuid1()), name=args['name'], owner_email=logged_in_email)
+        database.session.add(new_item)
+        database.session.commit()
+        return new_item, 201
 
 
 class ParticularItem(Resource):
     @marshal_with(item_resource_fields)
     def get(self, item_id):
+        args = item_get_delete_args.parse_args()
+        logged_in_email = get_logged_in_user(args['token'].encode('utf-8'))
         result = ItemModel.query.filter_by(id=item_id).first()
         if not result:
             abort(404, error="Item does not exist")
         return result, 200
 
     @marshal_with(item_resource_fields)
-    def put(self, item_id):
-        result = ItemModel.query.filter_by(id=item_id).first()
-        if result:
-            abort(404, error="Item already exists, cannot be overwritten")
-        args = item_put_args.parse_args()
-        new_item = ItemModel(
-            id=item_id, name=args['name'], owner_email=args['owner_email'])
-        database.session.add(new_item)
-        database.session.commit()
-        return new_item, 201
-
-    @marshal_with(item_resource_fields)
     def patch(self, item_id):
+        args = item_patch_args.parse_args()
+        logged_in_email = get_logged_in_user(args['token'].encode('utf-8'))
         result = ItemModel.query.filter_by(id=item_id).first()
         if not result:
             abort(404, error="Item does not exist")
-        args = item_patch_args.parse_args()
         if args["name"]:
             result.name = args["name"]
         database.session.commit()
@@ -112,6 +132,8 @@ class ParticularItem(Resource):
 
     @marshal_with(item_resource_fields)
     def delete(self, item_id):
+        args = item_get_delete_args.parse_args()
+        logged_in_email = get_logged_in_user(args['token'].encode('utf-8'))
         result = ItemModel.query.filter_by(id=item_id).first()
         if not result:
             abort(404, error="Item does not exist, cannot perform deletion")
@@ -155,7 +177,7 @@ class ParticularUser(Resource):
             abort(404, error="Route does not exist")
 
 
-api.add_resource(ParticularItem, "/item/<int:item_id>")
+api.add_resource(ParticularItem, "/item/<string:item_id>")
 api.add_resource(AllItems, "/item")
 api.add_resource(ParticularUser, "/auth/<string:param>")
 
