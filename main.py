@@ -5,6 +5,11 @@ import jwt
 import bcrypt
 import jwt
 from uuid import uuid1
+from decouple import config
+
+SECRET_KEY = config('ACCESS_SECRET_TOKEN')
+BCRYPT_SALT = int(config('BCRYPT_SALT'))
+print(SECRET_KEY)
 
 app = Flask(__name__)
 api = Api(app)
@@ -78,7 +83,7 @@ user_resource_fields = {
 
 def get_logged_in_user(token):
     try:
-        user = jwt.decode(token, 'secret', algorithms=['HS256'])
+        user = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
         if not user['email']:
             abort(404, error="Token is invalid")
         return user['email']
@@ -158,7 +163,7 @@ class ParticularUser(Resource):
                 args['password'].encode('utf-8'), result.password)
             if is_password_matching:
                 encoded_token = jwt.encode(
-                    {"email": result.email}, "secret", algorithm='HS256')
+                    {"email": result.email}, SECRET_KEY, algorithm='HS256')
                 return {'token': encoded_token}
             abort(404, error="Passwords does not match")
         else:
@@ -172,7 +177,7 @@ class ParticularUser(Resource):
             if result:
                 abort(404, error="User already exists")
             hashed_password = bcrypt.hashpw(
-                args['password'].encode('utf-8'), bcrypt.gensalt())
+                args['password'].encode('utf-8'), bcrypt.gensalt(BCRYPT_SALT))
             new_user = UserModel(
                 email=args['email'], name=args['name'], password=hashed_password)
             database.session.add(new_user)
