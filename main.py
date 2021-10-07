@@ -36,18 +36,18 @@ class UserModel(database.Model):
 
 item_get_delete_args = reqparse.RequestParser()
 item_get_delete_args.add_argument(
-    "token", type=str, help="jwt is missing", required=True)
+    "Authorization", type=str, help="jwt is missing", location='headers', required=True)
 
 item_put_args = reqparse.RequestParser()
 item_put_args.add_argument(
     "name", type=str, help="name of the item is missing", required=True)
 item_put_args.add_argument(
-    "token", type=str, help="jwt is missing", required=True)
+    "Authorization", type=str, help="jwt is missing", location='headers', required=True)
 
 item_patch_args = reqparse.RequestParser()
 item_patch_args.add_argument("name", type=str, required=True)
 item_patch_args.add_argument(
-    "token", type=str, help="jwt is missing", required=True)
+    "Authorization", type=str, help="jwt is missing", location='headers', required=True)
 
 user_register_args = reqparse.RequestParser()
 user_register_args.add_argument(
@@ -90,7 +90,8 @@ class AllItems(Resource):
     @marshal_with(item_resource_fields)
     def get(self):
         args = item_get_delete_args.parse_args()
-        logged_in_email = get_logged_in_user(args['token'].encode('utf-8'))
+        logged_in_email = get_logged_in_user(
+            args['Authorization'].split(' ')[1])
         result = ItemModel.query.filter_by(
             owner_email=logged_in_email).all()
         if not result:
@@ -100,7 +101,8 @@ class AllItems(Resource):
     @marshal_with(item_resource_fields)
     def put(self):
         args = item_put_args.parse_args()
-        logged_in_email = get_logged_in_user(args['token'].encode('utf-8'))
+        logged_in_email = get_logged_in_user(
+            args['Authorization'].split(' ')[1])
         new_item = ItemModel(
             id=str(uuid1()), name=args['name'], owner_email=logged_in_email)
         database.session.add(new_item)
@@ -112,7 +114,8 @@ class ParticularItem(Resource):
     @marshal_with(item_resource_fields)
     def get(self, item_id):
         args = item_get_delete_args.parse_args()
-        logged_in_email = get_logged_in_user(args['token'].encode('utf-8'))
+        logged_in_email = get_logged_in_user(
+            args['Authorization'].split(' ')[1])
         result = ItemModel.query.filter_by(id=item_id).first()
         if not result:
             abort(404, error="Item does not exist")
@@ -121,7 +124,8 @@ class ParticularItem(Resource):
     @marshal_with(item_resource_fields)
     def patch(self, item_id):
         args = item_patch_args.parse_args()
-        logged_in_email = get_logged_in_user(args['token'].encode('utf-8'))
+        logged_in_email = get_logged_in_user(
+            args['Authorization'].split(' ')[1])
         result = ItemModel.query.filter_by(id=item_id).first()
         if not result:
             abort(404, error="Item does not exist")
@@ -133,7 +137,8 @@ class ParticularItem(Resource):
     @marshal_with(item_resource_fields)
     def delete(self, item_id):
         args = item_get_delete_args.parse_args()
-        logged_in_email = get_logged_in_user(args['token'].encode('utf-8'))
+        logged_in_email = get_logged_in_user(
+            args['Authorization'].split(' ')[1])
         result = ItemModel.query.filter_by(id=item_id).first()
         if not result:
             abort(404, error="Item does not exist, cannot perform deletion")
