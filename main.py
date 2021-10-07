@@ -9,14 +9,14 @@ from decouple import config
 
 SECRET_KEY = config('ACCESS_SECRET_TOKEN')
 BCRYPT_SALT = int(config('BCRYPT_SALT'))
-DATABASE_URL = config('DATABASE_URL')
+# DATABASE_URL = config('DATABASE_URL')
 print(SECRET_KEY)
 
 app = Flask(__name__)
 api = Api(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///items.db'
-if DATABASE_URL:
-    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+# if DATABASE_URL:
+#     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 database = SQLAlchemy(app)
 
 
