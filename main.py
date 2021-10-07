@@ -164,7 +164,7 @@ class ParticularUser(Resource):
             if is_password_matching:
                 encoded_token = jwt.encode(
                     {"email": result.email}, SECRET_KEY, algorithm='HS256')
-                return {'token': encoded_token}
+                return {'name': result.name, 'token': encoded_token}
             abort(404, error="Passwords does not match")
         else:
             abort(404, error="Route does not exist")
