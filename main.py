@@ -9,7 +9,7 @@ from decouple import config
 
 SECRET_KEY = config('ACCESS_SECRET_TOKEN')
 BCRYPT_SALT = int(config('BCRYPT_SALT'))
-DATABASE_URL = int(config('DATABASE_URL'))
+DATABASE_URL = config('DATABASE_URL')
 print(SECRET_KEY)
 
 app = Flask(__name__)
