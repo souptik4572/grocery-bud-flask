@@ -1,12 +1,18 @@
 from flask import Flask
 from flask_restful import Api, Resource, reqparse, abort, fields, marshal_with
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import create_engine
 import jwt
 import bcrypt
-import jwt
 from uuid import uuid1
 from decouple import config
+from sqlalchemy.sql.sqltypes import Unicode
+
+from item import Item
+from user import User
+from base import Session, engine, Base
+
+Base.metadata.create_all(engine)
+session = Session()
 
 SECRET_KEY = config('ACCESS_SECRET_TOKEN')
 BCRYPT_SALT = int(config('BCRYPT_SALT'))
@@ -15,29 +21,6 @@ app = Flask(__name__)
 api = Api(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///items.db'
 database = SQLAlchemy(app)
-
-
-class ItemModel(database.Model):
-    id = database.Column(database.String, primary_key=True)
-    name = database.Column(database.String(50), nullable=False)
-    owner_email = database.Column(database.String, database.ForeignKey(
-        'user_model.email'), nullable=False)
-
-    def __repr__(self) -> str:
-        return f"Item(id = {self.id}, name = {self.name})"
-
-
-class UserModel(database.Model):
-    name = database.Column(database.String(150), nullable=False)
-    email = database.Column(database.String(200), primary_key=True)
-    password = database.Column(database.String(200), nullable=False)
-    items = database.relationship('ItemModel', backref='item_model')
-
-    def __repr__(self) -> str:
-        return f"User(name = {self.name}, email = {self.email}, password = {self.password})"
-
-# database.create_all()
-
 
 item_get_delete_args = reqparse.RequestParser()
 item_get_delete_args.add_argument(
@@ -68,10 +51,16 @@ user_login_args.add_argument(
 user_login_args.add_argument(
     "password", type=str, help="password is missing", required=True)
 
+
+class MyDateFormat(fields.Raw):
+    def format(self, value):
+        return value.strftime('%Y-%m-%d')
+
+
 item_resource_fields = {
     "id": fields.String,
     "name": fields.String,
-    "owner_email": fields.String
+    "created_on": MyDateFormat
 }
 
 user_resource_fields = {
@@ -84,9 +73,9 @@ user_resource_fields = {
 def get_logged_in_user(token):
     try:
         user = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-        if not user['email']:
+        if not user['id']:
             abort(404, error="Token is invalid")
-        return user['email']
+        return user['id']
     except:
         abort(404, error="Token is invalid")
 
@@ -97,8 +86,8 @@ class AllItems(Resource):
         args = item_get_delete_args.parse_args()
         logged_in_email = get_logged_in_user(
             args['Authorization'].split(' ')[1])
-        result = ItemModel.query.filter_by(
-            owner_email=logged_in_email).all()
+        result = session.query(Item).filter(
+            Item.user_id == logged_in_email).all()
         if not result:
             abort(404, error="Items does not exist")
         return result
@@ -108,10 +97,11 @@ class AllItems(Resource):
         args = item_put_args.parse_args()
         logged_in_email = get_logged_in_user(
             args['Authorization'].split(' ')[1])
-        new_item = ItemModel(
-            id=str(uuid1()), name=args['name'], owner_email=logged_in_email)
-        database.session.add(new_item)
-        database.session.commit()
+        current_user = session.query(User).filter(
+            User.id == logged_in_email).first()
+        new_item = Item(args['name'], current_user)
+        session.add(new_item)
+        session.commit()
         return new_item, 201
 
 
@@ -121,7 +111,7 @@ class ParticularItem(Resource):
         args = item_get_delete_args.parse_args()
         logged_in_email = get_logged_in_user(
             args['Authorization'].split(' ')[1])
-        result = ItemModel.query.filter_by(id=item_id).first()
+        result = session.query(Item).filter(Item.id == item_id).first()
         if not result:
             abort(404, error="Item does not exist")
         return result, 200
@@ -131,12 +121,12 @@ class ParticularItem(Resource):
         args = item_patch_args.parse_args()
         logged_in_email = get_logged_in_user(
             args['Authorization'].split(' ')[1])
-        result = ItemModel.query.filter_by(id=item_id).first()
+        result = session.query(Item).filter(Item.id == item_id).first()
         if not result:
             abort(404, error="Item does not exist")
         if args["name"]:
             result.name = args["name"]
-        database.session.commit()
+        session.commit()
         return result, 201
 
     @marshal_with(item_resource_fields)
@@ -144,11 +134,12 @@ class ParticularItem(Resource):
         args = item_get_delete_args.parse_args()
         logged_in_email = get_logged_in_user(
             args['Authorization'].split(' ')[1])
-        result = ItemModel.query.filter_by(id=item_id).first()
+        result = session.query(Item).filter(Item.id == item_id).first()
         if not result:
             abort(404, error="Item does not exist, cannot perform deletion")
-        ItemModel.query.filter_by(id=item_id).delete()
-        database.session.commit()
+        # session.query(Item).filter(Item.id == item_id).delete(synchronize_session=False)
+        session.delete(result)
+        session.commit()
         return result, 201
 
 
@@ -156,14 +147,16 @@ class ParticularUser(Resource):
     def post(self, param):
         if param == "login":
             args = user_login_args.parse_args()
-            result = UserModel.query.filter_by(email=args['email']).first()
+            result = session.query(User).filter(
+                User.email == args['email']).first()
             if not result:
                 abort(404, error="User with email id does not exist")
-            is_password_matching = bcrypt.checkpw(
-                args['password'].encode('utf-8'), result.password)
+            print(result.password.encode('utf-8'))
+            print(result.password)
+            is_password_matching = bcrypt.checkpw(args['password'].encode('utf-8'), result.password.encode('utf-8'))
             if is_password_matching:
                 encoded_token = jwt.encode(
-                    {"email": result.email}, SECRET_KEY, algorithm='HS256')
+                    {"email": result.email, "id": result.id}, SECRET_KEY, algorithm='HS256')
                 return {'name': result.name, 'token': encoded_token}
             abort(404, error="Passwords does not match")
         else:
@@ -173,15 +166,15 @@ class ParticularUser(Resource):
     def put(self, param):
         if param == "register":
             args = user_register_args.parse_args()
-            result = UserModel.query.filter_by(email=args['email']).first()
+            result = session.query(User).filter(
+                User.email == args['email']).first()
             if result:
                 abort(404, error="User already exists")
-            hashed_password = bcrypt.hashpw(
-                args['password'].encode('utf-8'), bcrypt.gensalt(BCRYPT_SALT))
-            new_user = UserModel(
-                email=args['email'], name=args['name'], password=hashed_password)
-            database.session.add(new_user)
-            database.session.commit()
+            hashed_password = str(bcrypt.hashpw(args['password'].encode('utf-8'), bcrypt.gensalt(BCRYPT_SALT))).replace("b'", "").replace("'", "")
+            print(hashed_password, type(hashed_password))
+            new_user = User(args['name'], args['email'], hashed_password)
+            session.add(new_user)
+            session.commit()
             return new_user, 201
         else:
             abort(404, error="Route does not exist")
