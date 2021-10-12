@@ -8,7 +8,7 @@ DATABASE_URL = config('DATABASE_URL')
 ENV = config('ENV')
 
 local_database_url = 'sqlite:///items.db' # for local development
-if ENV == 'prod':
+if ENV == 'prod': # for production environment
     local_database_url = DATABASE_URL
 
 engine = create_engine(local_database_url)
