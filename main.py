@@ -5,6 +5,7 @@ import jwt
 import bcrypt
 from uuid import uuid1
 from decouple import config
+from sqlalchemy.sql.sqltypes import Unicode
 
 from item import Item
 from user import User
@@ -50,9 +51,11 @@ user_login_args.add_argument(
 user_login_args.add_argument(
     "password", type=str, help="password is missing", required=True)
 
+
 class MyDateFormat(fields.Raw):
     def format(self, value):
         return value.strftime('%Y-%m-%d')
+
 
 item_resource_fields = {
     "id": fields.String,
@@ -83,7 +86,8 @@ class AllItems(Resource):
         args = item_get_delete_args.parse_args()
         logged_in_email = get_logged_in_user(
             args['Authorization'].split(' ')[1])
-        result = session.query(Item).filter(Item.user_id == logged_in_email).all()
+        result = session.query(Item).filter(
+            Item.user_id == logged_in_email).all()
         if not result:
             abort(404, error="Items does not exist")
         return result
@@ -93,7 +97,8 @@ class AllItems(Resource):
         args = item_put_args.parse_args()
         logged_in_email = get_logged_in_user(
             args['Authorization'].split(' ')[1])
-        current_user = session.query(User).filter(User.id == logged_in_email).first()
+        current_user = session.query(User).filter(
+            User.id == logged_in_email).first()
         new_item = Item(args['name'], current_user)
         session.add(new_item)
         session.commit()
@@ -146,8 +151,9 @@ class ParticularUser(Resource):
                 User.email == args['email']).first()
             if not result:
                 abort(404, error="User with email id does not exist")
-            is_password_matching = bcrypt.checkpw(
-                args['password'].encode('utf-8'), result.password)
+            print(result.password.encode('utf-8'))
+            print(result.password)
+            is_password_matching = bcrypt.checkpw(args['password'].encode('utf-8'), result.password.encode('utf-8'))
             if is_password_matching:
                 encoded_token = jwt.encode(
                     {"email": result.email, "id": result.id}, SECRET_KEY, algorithm='HS256')
@@ -164,8 +170,8 @@ class ParticularUser(Resource):
                 User.email == args['email']).first()
             if result:
                 abort(404, error="User already exists")
-            hashed_password = bcrypt.hashpw(
-                args['password'].encode('utf-8'), bcrypt.gensalt(BCRYPT_SALT))
+            hashed_password = str(bcrypt.hashpw(args['password'].encode('utf-8'), bcrypt.gensalt(BCRYPT_SALT))).replace("b'", "").replace("'", "")
+            print(hashed_password, type(hashed_password))
             new_user = User(args['name'], args['email'], hashed_password)
             session.add(new_user)
             session.commit()
