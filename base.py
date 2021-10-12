@@ -7,7 +7,7 @@ from decouple import config
 DATABASE_URL = config('DATABASE_URL')
 ENV = config('ENV')
 
-local_database_url = 'sqlite:///items.db'
+local_database_url = 'sqlite:///items.db' # for local development
 if ENV == 'prod':
     local_database_url = DATABASE_URL
 
