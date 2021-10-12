@@ -3,12 +3,10 @@ from flask_restful import Api, Resource, reqparse, abort, fields, marshal_with
 from flask_sqlalchemy import SQLAlchemy
 import jwt
 import bcrypt
-from uuid import uuid1
 from decouple import config
-from sqlalchemy.sql.sqltypes import Unicode
 
-from item import Item
-from user import User
+from models.item import Item
+from models.user import User
 from base import Session, engine, Base
 
 Base.metadata.create_all(engine)
@@ -182,4 +180,4 @@ api.add_resource(AllItems, "/item")
 api.add_resource(ParticularUser, "/auth/<string:param>")
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    app.run(debug=True)
