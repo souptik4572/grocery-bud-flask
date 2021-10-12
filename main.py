@@ -151,8 +151,6 @@ class ParticularUser(Resource):
                 User.email == args['email']).first()
             if not result:
                 abort(404, error="User with email id does not exist")
-            print(result.password.encode('utf-8'))
-            print(result.password)
             is_password_matching = bcrypt.checkpw(args['password'].encode('utf-8'), result.password.encode('utf-8'))
             if is_password_matching:
                 encoded_token = jwt.encode(
@@ -171,7 +169,6 @@ class ParticularUser(Resource):
             if result:
                 abort(404, error="User already exists")
             hashed_password = str(bcrypt.hashpw(args['password'].encode('utf-8'), bcrypt.gensalt(BCRYPT_SALT))).replace("b'", "").replace("'", "")
-            print(hashed_password, type(hashed_password))
             new_user = User(args['name'], args['email'], hashed_password)
             session.add(new_user)
             session.commit()
@@ -185,4 +182,4 @@ api.add_resource(AllItems, "/item")
 api.add_resource(ParticularUser, "/auth/<string:param>")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)
