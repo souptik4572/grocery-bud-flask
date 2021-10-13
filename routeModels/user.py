@@ -2,8 +2,9 @@ from flask_restful import Resource, reqparse, abort, fields, marshal_with
 import jwt
 import bcrypt
 from decouple import config
+from datetime import datetime, timedelta
 
-from models import Session, engine, Base
+from models import Session
 from models.user import User
 
 session = Session()
@@ -43,8 +44,9 @@ class ParticularUser(Resource):
             is_password_matching = bcrypt.checkpw(
                 args['password'].encode('utf-8'), result.password.encode('utf-8'))
             if is_password_matching:
+                expiry_limit = datetime.now() + timedelta(hours=1)
                 encoded_token = jwt.encode(
-                    {"email": result.email, "id": result.id}, SECRET_KEY, algorithm='HS256')
+                    {"id": result.id, 'exp': expiry_limit}, SECRET_KEY, algorithm='HS256')
                 return {'name': result.name, 'token': encoded_token}
             abort(404, error="Passwords does not match")
         else:

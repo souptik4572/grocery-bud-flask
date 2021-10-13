@@ -2,7 +2,7 @@ from flask_restful import Resource, reqparse, abort, fields, marshal_with
 import jwt
 from decouple import config
 
-from models import Session, engine, Base
+from models import Session
 from models.item import Item
 from models.user import User
 
@@ -39,12 +39,14 @@ item_resource_fields = {
 }
 
 
-def get_logged_in_user(token):
+def get_logged_user_id(token):
     try:
         user = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
         if not user['id']:
             abort(404, error="Token is invalid")
         return user['id']
+    except jwt.ExpiredSignatureError:
+        abort(404, error="Token has expired, please login again")
     except:
         abort(404, error="Token is invalid")
 
@@ -53,7 +55,7 @@ class AllItems(Resource):
     @marshal_with(item_resource_fields)
     def get(self):
         args = item_get_delete_args.parse_args()
-        logged_in_email = get_logged_in_user(
+        logged_in_email = get_logged_user_id(
             args['Authorization'].split(' ')[1])
         result = session.query(Item).filter(
             Item.user_id == logged_in_email).all()
@@ -64,7 +66,7 @@ class AllItems(Resource):
     @marshal_with(item_resource_fields)
     def put(self):
         args = item_put_args.parse_args()
-        logged_in_email = get_logged_in_user(
+        logged_in_email = get_logged_user_id(
             args['Authorization'].split(' ')[1])
         current_user = session.query(User).filter(
             User.id == logged_in_email).first()
@@ -78,7 +80,7 @@ class ParticularItem(Resource):
     @marshal_with(item_resource_fields)
     def get(self, item_id):
         args = item_get_delete_args.parse_args()
-        logged_in_email = get_logged_in_user(
+        logged_in_email = get_logged_user_id(
             args['Authorization'].split(' ')[1])
         result = session.query(Item).filter(Item.id == item_id).first()
         if not result:
@@ -88,7 +90,7 @@ class ParticularItem(Resource):
     @marshal_with(item_resource_fields)
     def patch(self, item_id):
         args = item_patch_args.parse_args()
-        logged_in_email = get_logged_in_user(
+        logged_in_email = get_logged_user_id(
             args['Authorization'].split(' ')[1])
         result = session.query(Item).filter(Item.id == item_id).first()
         if not result:
@@ -101,7 +103,7 @@ class ParticularItem(Resource):
     @marshal_with(item_resource_fields)
     def delete(self, item_id):
         args = item_get_delete_args.parse_args()
-        logged_in_email = get_logged_in_user(
+        logged_in_email = get_logged_user_id(
             args['Authorization'].split(' ')[1])
         result = session.query(Item).filter(Item.id == item_id).first()
         if not result:
