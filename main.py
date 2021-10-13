@@ -2,8 +2,6 @@ from flask import Flask
 from flask_restful import Api
 from decouple import config
 
-from models.item import Item
-from models.user import User
 from models import Base, engine
 
 from routeModels.user import ParticularUser
