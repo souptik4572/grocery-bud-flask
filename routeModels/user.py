@@ -3,8 +3,10 @@ import jwt
 import bcrypt
 from decouple import config
 
-from models import session
+from models import Session, engine, Base
 from models.user import User
+
+session = Session()
 
 SECRET_KEY = config('ACCESS_SECRET_TOKEN')
 BCRYPT_SALT = int(config('BCRYPT_SALT'))

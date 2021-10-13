@@ -15,6 +15,3 @@ engine = create_engine(local_database_url)
 Session = sessionmaker(bind=engine)
 
 Base = declarative_base()
-
-Base.metadata.create_all(engine)
-session = Session()
