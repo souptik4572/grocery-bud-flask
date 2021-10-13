@@ -22,4 +22,4 @@ api.add_resource(AllItems, "/item")
 api.add_resource(ParticularUser, "/auth/<string:param>")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)
